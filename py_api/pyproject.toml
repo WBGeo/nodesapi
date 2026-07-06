@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+[project]
+name = "py_api_wbgeo"
+dynamic = ["version"]
+authors = [
+    { name = "WBGEO", email = "author@example.com" },
+]
+description = "The api to register new wbgeo data and compute nodes"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.11.1"
+]
+
+[project.urls]
+Homepage = "https://wbgeo.pages.rwth-aachen.de/"
+
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+search_parent_directories = true
