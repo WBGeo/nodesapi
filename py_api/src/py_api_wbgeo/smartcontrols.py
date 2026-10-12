@@ -61,6 +61,14 @@ class CtrlText(ACtrlInput):
     smart_type: str = "text"
 
 
+class CtrlBool(ACtrlInput):
+    """
+    A boolean input
+    """
+    defaultValue: typing.Optional[bool]
+    smart_type: str = "bool"
+
+
 class CtrlIf(BaseModel):
     """
     Displays an area depending on the selection of another (smart) input
@@ -152,6 +160,12 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
         elif field_type == typing.Optional[float]:
             ret.append(CtrlFloat(id=name, label=f'({name})', description=description, defaultValue=float(
                 current_value) if current_value is not None else None))
+        elif field_type == bool:
+            ret.append(CtrlBool(id=name, label=name, description=description,
+                               defaultValue=current_value == 'True' if current_value is not None else None))
+        elif field_type == typing.Optional[bool]:
+            ret.append(CtrlBool(id=name, label=f'({name})', description=description,
+                               defaultValue=current_value == 'True' if current_value is not None else None))
         elif field_type == str:
             ret.append(CtrlText(id=name, label=name, description=description, defaultValue=current_value))
         elif field_type == typing.Optional[str]:
