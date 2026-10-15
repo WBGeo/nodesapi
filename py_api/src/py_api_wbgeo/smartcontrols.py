@@ -168,10 +168,10 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
                 current_value) if current_value is not None else None))
         elif field_type == bool:
             ret.append(CtrlBool(id=name, label=name, description=description,
-                                defaultValue=current_value == 'True' if current_value is not None else None))
+                                defaultValue=str(current_value) == 'True' if current_value is not None else None))
         elif field_type == typing.Optional[bool]:
             ret.append(CtrlBool(id=name, label=f'({name})', description=description,
-                                defaultValue=current_value == 'True' if current_value is not None else None))
+                                defaultValue=str(current_value) == 'True' if current_value is not None else None))
         elif field_type == str:
             ret.append(CtrlText(id=name, label=name, description=description, defaultValue=current_value))
         elif field_type == typing.Optional[str]:
