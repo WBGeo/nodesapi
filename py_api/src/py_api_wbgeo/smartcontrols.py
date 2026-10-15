@@ -1,12 +1,13 @@
+import builtins
+import enum
 import json
-
-from py_api_wbgeo import nodesapi
-
+import types
 import typing
-
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 from typing_extensions import TypeVar
+
+from py_api_wbgeo import nodesapi
 
 """
 This class describes control form elements
@@ -34,7 +35,7 @@ class CtrlSelect(ACtrlInput):
     """
     A choice
     """
-    options: typing.List[str]
+    options: typing.List[typing.Union[typing.Tuple[str, str] | str]]
     defaultValue: typing.Optional[str] = None
     smart_type: str = "select"
 
@@ -46,12 +47,14 @@ class CtrlInt(ACtrlInput):
     defaultValue: typing.Optional[int]
     smart_type: str = "int"
 
+
 class CtrlFloat(ACtrlInput):
     """
     A numeric input, supporting comma numbers
     """
     defaultValue: typing.Optional[float]
     smart_type: str = "float"
+
 
 class CtrlText(ACtrlInput):
     """
@@ -91,6 +94,7 @@ class CtrlOrderedGrouping(ACtrlInput):
     defaultValue: typing.Optional[typing.Dict[str, typing.List[str]]] = None
     smart_type: str = "order"
 
+
 @nodesapi.wbgeo_type(name='Internal CtrlGroup', color='black',
                      identifier='__internal::smart_ctr-group')
 @dataclass()
@@ -112,7 +116,8 @@ class CtrlFromType(BaseModel):
     smart_type: str = "fromtype"
 
 
-ASmartControl = typing.Union[CtrlLabel, CtrlSelect, CtrlInt, CtrlFloat, CtrlIf, CtrlGroup, CtrlFromType, CtrlOrderedGrouping, CtrlText, CtrlBool]
+ASmartControl = typing.Union[
+    CtrlLabel, CtrlSelect, CtrlInt, CtrlFloat, CtrlIf, CtrlGroup, CtrlFromType, CtrlOrderedGrouping, CtrlText, CtrlBool]
 
 CtrlIf.model_rebuild()
 
@@ -132,6 +137,7 @@ SmartInputFormData = typing.Annotated[
     str, nodesapi.AnnotatedScriptType(name='SmartInputFormData', color='aqua',
                                       identifier='__internal:SmartInputFormData')]
 
+
 # ================
 #  Utility Code
 # ===============
@@ -143,11 +149,11 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
 
     for name, field in type.model_fields.items():
         field_type = field.annotation
+        field_origin_type = typing.get_origin(field.annotation)
         default_value = field.default
         current_value = getattr(t_inst, name) if t_inst is not None and hasattr(t_inst,
                                                                                 name) else default_value
         description = field.description
-
         if field_type == int:
             ret.append(CtrlInt(id=name, label=name, description=description,
                                defaultValue=int(current_value) if current_value is not None else None))
@@ -162,19 +168,55 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
                 current_value) if current_value is not None else None))
         elif field_type == bool:
             ret.append(CtrlBool(id=name, label=name, description=description,
-                               defaultValue=current_value == 'True' if current_value is not None else None))
+                                defaultValue=current_value == 'True' if current_value is not None else None))
         elif field_type == typing.Optional[bool]:
             ret.append(CtrlBool(id=name, label=f'({name})', description=description,
-                               defaultValue=current_value == 'True' if current_value is not None else None))
+                                defaultValue=current_value == 'True' if current_value is not None else None))
         elif field_type == str:
             ret.append(CtrlText(id=name, label=name, description=description, defaultValue=current_value))
         elif field_type == typing.Optional[str]:
             ret.append(
-                CtrlText(id=name, label=f'({name})', description=description, defaultValue=current_value))
+                CtrlText(id=name, label=f'({name})', description=description,
+                         defaultValue=current_value))
+        elif isinstance(field_type, builtins.type) and issubclass(field_type, enum.Enum):
+            current_enum_value = None
+            try:
+                current_enum_value = str(field_type(current_value).value)
+            except ValueError:
+                pass
+            if any(builtins.type(i.value) != str for i in field_type):
+                ret.append(CtrlLabel(
+                    label=f"{description}: Unhandled non-string enum `{str(name)}`: `{str(field_type)}`"))
+            else:
+                ret.append(CtrlSelect(id=name, label=f'({name})',
+                                      options=[(i.value, str(i.name)) for i in field_type],
+                                      defaultValue=current_enum_value if current_enum_value else next(
+                                          field_type).value))
+        elif field_origin_type in (typing.Union, types.UnionType) and any(
+                arg is not builtins.type(None) and isinstance(arg, builtins.type) and issubclass(arg,
+                                                                                                 enum.Enum)
+                for arg in typing.get_args(field_type)):
+            enum_type = next(arg for arg in typing.get_args(field_type) if
+                             isinstance(arg, builtins.type) and issubclass(arg, enum.Enum))
+            current_enum_value = None
+            try:
+                current_enum_value = enum_type(current_value).value
+            except ValueError:
+                pass
+            if any(builtins.type(i.value) != str for i in enum_type):
+                ret.append(CtrlLabel(
+                    label=f"{description}: Unhandled non-string opt enum `{str(name)}`: `{str(enum_type)}`"))
+            else:
+                ret.append(CtrlSelect(id=name, label=f'({name})',
+                                      options=[('', '<Absent>')] + [(i.value, str(i.name)) for i in
+                                                                    enum_type],
+                                      defaultValue=current_enum_value if current_enum_value else ''))
         else:
-            ret.append(CtrlLabel(label=description + f": Unhandled `{str(name)}: {str(field_type)}`"))
+            ret.append(
+                CtrlLabel(label=f"{description}: Unhandled `{str(name)}`: `{str(field_type)}`"))
 
     return ret
+
 
 T = TypeVar('T')
 
@@ -204,5 +246,5 @@ def form_data_unflatten_dict(d):
             if part not in d:
                 d[part] = dict()
             d = d[part]
-        d[parts[-1]] = vlaue
+        d[parts[-1]] = vlaue if vlaue is not '<Absent>' else None
     return ret
