@@ -190,6 +190,7 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
             else:
                 ret.append(CtrlSelect(id=name, label=f'({name})',
                                       options=[(i.value, str(i.name)) for i in field_type],
+                                      description=description,
                                       defaultValue=current_enum_value if current_enum_value else next(
                                           field_type).value))
         elif field_origin_type in (typing.Union, types.UnionType) and any(
@@ -210,6 +211,7 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
                 ret.append(CtrlSelect(id=name, label=f'({name})',
                                       options=[('', '<Absent>')] + [(i.value, str(i.name)) for i in
                                                                     enum_type],
+                                      description=description,
                                       defaultValue=current_enum_value if current_enum_value else ''))
         else:
             ret.append(
