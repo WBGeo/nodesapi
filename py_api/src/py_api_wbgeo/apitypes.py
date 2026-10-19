@@ -87,6 +87,7 @@ class RegisterScriptBlockOptParams(TypedDict, total=False):
     border_color: str
     title: str
     group: str
+    positionInGroup: int # specifies the position within the list of components (ordered by group, then by this, then by color)
     tags: List[str]
     is_visualizer: bool
     requires_package: List[str]
@@ -119,6 +120,7 @@ class ComponentDecoratorOptParams(TypedDict, total=False):
     color: str
     border_color: str
     group: str
+    positionInGroup: int # specifies the position within the list of components (ordered by group, then by this, then by color)
     tags: List[str]
     return_name: str
     is_object_type: bool
