@@ -2,6 +2,7 @@ import enum
 import json
 import os
 import typing
+import io
 
 """
 Example usage:
@@ -59,3 +60,33 @@ def load_computation(geo_type: typing.Type[T],
     return real_type[i]
   return real_type(**json.loads(i))
 
+
+def save_computation(value: typing.Any, file_path: typing.Union[os.PathLike | str | bytes]):
+  """
+  Mirrors the serialization of the workbench, such that load_computation can read a result
+  :param value: the result of a computation
+  :param file_path: the path to the serialized result
+  """
+  #
+  import pydantic
+  from py_api_wbgeo.nodesapi import GeoTempFile
+  if isinstance(value, io.IOBase):
+    value.seek(0)
+    with open(file_path, "wb") as f:
+      f.write(value.read())
+    value.close()
+    return
+  if isinstance(value, GeoTempFile):
+    with open(value.__fspath__(), "rb") as src, open(file_path, "wb") as f:
+      f.write(src.read())
+    value.close_and_remove()
+    return
+  if isinstance(value, (str, int, bool)):
+    ret = str(value)
+  elif isinstance(value, pydantic.BaseModel):
+    ret = value.model_dump_json(exclude_none=True)
+  else:
+    from pydantic_core import to_jsonable_python
+    ret = json.dumps(to_jsonable_python(value))
+  with open(file_path, "w") as f:
+    f.write(ret)
