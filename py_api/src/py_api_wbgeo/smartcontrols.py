@@ -4,6 +4,7 @@ import json
 import types
 import typing
 from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
 from pydantic.dataclasses import dataclass
 from typing_extensions import TypeVar
 
@@ -150,7 +151,7 @@ def smart_group_from_type(type: type[BaseModel], t_inst: typing.Any = None) -> l
     for name, field in type.model_fields.items():
         field_type = field.annotation
         field_origin_type = typing.get_origin(field.annotation)
-        default_value = field.default
+        default_value = field.default if field.default is not PydanticUndefined else None
         current_value = getattr(t_inst, name) if t_inst is not None and hasattr(t_inst,
                                                                                 name) else default_value
         description = field.description
